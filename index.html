@@ -1,0 +1,130 @@
+<!DOCTYPE html><html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lion Gaming Panel</title>
+<style>
+body{font-family:Arial;background:#111;color:#fff;text-align:center}
+.box{margin:20px;padding:20px;background:#222;border-radius:10px}
+button{padding:8px 15px;margin:5px;border:none;border-radius:5px;background:#00c853;color:#fff}
+.reject{background:red}
+input{padding:10px;margin:5px;border-radius:5px;border:none}
+</style>
+</head>
+<body><h1>🔥 Lion Gaming Panel 🔥</h1><div class="box">
+<input id="username" placeholder="Username"><br>
+<input id="password" type="password" placeholder="Password"><br>
+<button onclick="register()">Register</button>
+<button onclick="login()">Login</button>
+</div><div class="box" id="userPanel" style="display:none">
+<h3>Welcome: <span id="userDisplay"></span></h3>
+<h3>Wallet: ₹<span id="balance">0</span></h3>
+<input id="amount" type="number" placeholder="Amount"><br>
+<button onclick="deposit()">Deposit</button>
+<button onclick="withdraw()">Withdraw</button>
+</div><button onclick="window.open('admin.html')">👨‍💻 Admin Panel</button>
+
+<script type="module">
+import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {getDatabase,ref,set,get,push} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+const app=initializeApp({apiKey:"AIzaSy..."});
+const db=getDatabase(app);
+let currentUser="";
+
+window.register=async()=>{
+ let u=username.value,p=password.value;
+ await set(ref(db,"users/"+u),{password:p,balance:100});
+ alert("Registered");
+}
+
+window.login=async()=>{
+ let u=username.value,p=password.value;
+ let s=await get(ref(db,"users/"+u));
+ if(s.exists()&&s.val().password===p){
+  currentUser=u;
+  userDisplay.innerText=u;
+  balance.innerText=s.val().balance;
+  userPanel.style.display="block";
+ }else alert("Wrong login");
+}
+
+window.deposit=async()=>{
+ let amt=amount.value;
+ await push(ref(db,"requests"),{user:currentUser,amount:amt,type:"deposit"});
+ alert("Request Sent");
+}
+
+window.withdraw=async()=>{
+ let amt=amount.value;
+ await push(ref(db,"requests"),{user:currentUser,amount:amt,type:"withdraw"});
+ alert("Request Sent");
+}
+</script></body>
+</html><!-- ADMIN PANEL --><!DOCTYPE html><html>
+<head>
+<title>Admin</title>
+<style>
+body{background:#111;color:#fff;text-align:center}
+.box{margin:20px;padding:20px;background:#222;border-radius:10px}
+button{margin:5px}
+</style>
+</head>
+<body>
+<h1>Admin Panel</h1>
+<input id="pass" type="password" placeholder="Password"><br>
+<button onclick="login()">Login</button><div id="panel" style="display:none">
+<h3>Requests</h3>
+<div id="req"></div><h3>History</h3>
+<div id="history"></div>
+</div><script type="module">
+import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {getDatabase,ref,onValue,update,get,remove,push} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+const app=initializeApp({apiKey:"AIzaSy..."});
+const db=getDatabase(app);
+const adminPass="Deshrajmahariya100";
+
+window.login=()=>{
+ if(pass.value===adminPass){panel.style.display="block";load();}
+ else alert("Wrong");
+}
+
+function load(){
+ onValue(ref(db,"requests"),snap=>{
+  let d=snap.val(),html="";
+  for(let id in d){
+    let r=d[id];
+    html+=`${r.user} ₹${r.amount} (${r.type})
+    <button onclick="approve('${id}','${r.user}',${r.amount})">Approve</button>
+    <button class='reject' onclick="reject('${id}')">Reject</button><br>`;
+  }
+  req.innerHTML=html;
+ });
+
+ onValue(ref(db,"history"),snap=>{
+  let d=snap.val(),h="";
+  for(let id in d){
+    let r=d[id];
+    h+=`${r.user} ₹${r.amount} (${r.type})<br>`;
+  }
+  history.innerHTML=h;
+ });
+}
+
+window.approve=async(id,user,amt)=>{
+ let uRef=ref(db,"users/"+user);
+ let s=await get(uRef);
+ let bal=s.val().balance;
+
+ await update(uRef,{balance:bal+amt});
+ await push(ref(db,"history"),{user,amount:amt,type:"approved"});
+ await remove(ref(db,"requests/"+id));
+}
+
+window.reject=async(id)=>{
+ await push(ref(db,"history"),{type:"rejected"});
+ await remove(ref(db,"requests/"+id));
+}
+</script></body>
+</html>
